@@ -1,0 +1,45 @@
+{
+  "name": "@andrew-pynch/sandglass",
+  "version": "0.1.0",
+  "description": "Andrew's customization layer on top of Sandcastle logs: a parser, renderer, and `sandglass logs` watcher CLI.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Andrew Pynch",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-pynch/sandglass.git"
+  },
+  "bin": {
+    "sandglass": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./parser": "./src/parser.ts",
+    "./render": "./src/render.ts",
+    "./watch": "./src/watch.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "sandcastle",
+    "logs",
+    "cli",
+    "watcher",
+    "ansi",
+    "bun"
+  ],
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^6.0.3"
+  }
+}
