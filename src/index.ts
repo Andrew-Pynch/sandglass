@@ -39,3 +39,32 @@ export {
   type LogEnv,
   type WatchOptions,
 } from "./watch.ts";
+
+export {
+  readRunStatus,
+  summarizeLogFile,
+  parsePlanIssues,
+  mergeRegionsByIssue,
+  issueIdFromSource,
+  parseDuration,
+  deriveIssueResult,
+  derivePhase,
+  deriveInterrupt,
+  DEFAULT_STALE_AFTER_MS,
+  type AgentLogSummary,
+  type AgentStatus,
+  type InterruptVerdict,
+  type IssueResult,
+  type MergeInfo,
+  type ReadRunStatusOptions,
+  type RunPhase,
+  type SandcastleIssueStatus,
+  type SandcastleLogStatus,
+  type SandcastleRunStatus,
+} from "./status.ts";
+
+export {
+  renderStatusTable,
+  toJsonStatus,
+  type StatusRenderOptions,
+} from "./status-render.ts";

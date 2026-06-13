@@ -7,7 +7,8 @@ and CLI. Not a game repo, not a pipeline. Keep it lean.
 
 Sandglass parses raw **Sandcastle log** lines into typed **log records** and
 renders them with colors and pretty-printed **structured blocks**. Primary
-surface is the `sandglass logs` command.
+surface is the `sandglass logs` command; `sandglass status` adds a read-only,
+logs-only summary of a live run (**run status**).
 
 ## Canonical terms
 
@@ -18,15 +19,22 @@ surface is the `sandglass logs` command.
 - **log record** — a typed unit: `raw`, `lifecycle`, `tool-call`, `structured-block`.
 - **renderer** — paints records to ANSI / no-color output (`src/render.ts`).
 - **structured block** — a `<plan>` / `<promise>` tagged block, possibly with JSON.
+- **run status** — a read-only `SandcastleRunStatus`: per-issue implementer/
+  reviewer/merger stages, run **phase**, and a "safe to interrupt" verdict,
+  inferred from log files + mtimes (`src/status.ts`).
 
 ## Layout
 
 - `src/parser.ts` — classifiers + `LogParser` + record types.
 - `src/render.ts` — `renderRecord` (returns `string[]`) + `formatLogLine` wrapper.
 - `src/watch.ts` — `resolveLogDir` + `watchLogs`.
-- `src/cli.ts` — `sandglass logs`, arg/env parsing, stdin path.
+- `src/status.ts` — `readRunStatus` + derivations (read-only, logs-only; reuses
+  `resolveLogDir`, `roleForSource`, `LogParser`, `classifyLine`).
+- `src/status-render.ts` — `renderStatusTable` + `toJsonStatus` (ANSI-free JSON).
+- `src/cli.ts` — `sandglass logs` / `sandglass status`, arg/env parsing, stdin path.
 - `src/index.ts` — public re-exports.
-- `tests/` — `highlight` (ported legacy), `parser`, `render`, `watch`; fixtures in `tests/fixtures/`.
+- `tests/` — `highlight` (ported legacy), `parser`, `render`, `watch`, `status`,
+  `status-render`; fixtures in `tests/fixtures/`.
 
 ## Conventions
 
@@ -47,4 +55,6 @@ GitHub Issues on `andrew-pynch/sandglass`. Triage labels: `needs-triage`,
 bun test
 bun run typecheck
 cat tests/fixtures/planner.log | bun src/cli.ts logs --stdin --no-color --source main-planner.log
+bun src/cli.ts status --repo /home/andrew/work/mcg --no-color
+bun src/cli.ts status --repo /home/andrew/work/mcg --json
 ```

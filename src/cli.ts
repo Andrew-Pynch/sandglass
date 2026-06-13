@@ -5,6 +5,12 @@
 import { createParser } from "./parser.ts";
 import { renderRecord } from "./render.ts";
 import {
+  DEFAULT_STALE_AFTER_MS,
+  parseDuration,
+  readRunStatus,
+} from "./status.ts";
+import { renderStatusTable, toJsonStatus } from "./status-render.ts";
+import {
   recordVisibleInCompact,
   resolveLogDir,
   watchLogs,
@@ -20,6 +26,10 @@ type Options = {
   color: boolean;
   source: string;
   stdin: boolean;
+  json: boolean;
+  watch: boolean;
+  staleAfterMs: number;
+  repo?: string;
 };
 
 const HELP = `sandglass — a better Sandcastle log watcher
@@ -27,8 +37,9 @@ const HELP = `sandglass — a better Sandcastle log watcher
 Usage:
   sandglass logs [options]            Watch the current repo's Sandcastle logs
   cat run.log | sandglass logs --stdin   Render piped log text
+  sandglass status [options]          Summarize the current/selected Sandcastle run
 
-Options:
+Options (logs):
   --dir <path>            Log directory (default: resolved from .sandcastle/logs)
   --lines <n>             Lines to tail per file (default: 80)
   --poll-interval <sec>   New-file poll interval (default: 1)
@@ -37,6 +48,13 @@ Options:
   --stdin                 Read log text from stdin instead of watching
   --color / --no-color    Force ANSI color on/off (default: auto by TTY)
   -h, --help              Show this help
+
+Options (status):
+  --json                  Emit the run-status model as JSON (ANSI-free, stable)
+  --watch                 Re-render the status on the poll interval
+  --stale-after <dur>     Idle threshold, e.g. 90s, 2m (default: 120s)
+  --repo <path>           Resolve logs from another repo root
+  --dir <path>            Log directory (overrides --repo resolution)
 
 Environment fallbacks:
   SANDCASTLE_LOG_DIR, SANDCASTLE_LOG_LINES,
@@ -57,6 +75,10 @@ function parseArgs(argv: string[]): { command?: string; options: Options; help: 
     color: Boolean(process.stdout.isTTY),
     source: "sandcastle",
     stdin: false,
+    json: false,
+    watch: false,
+    staleAfterMs: DEFAULT_STALE_AFTER_MS,
+    repo: undefined,
   };
 
   let command: string | undefined;
@@ -86,6 +108,19 @@ function parseArgs(argv: string[]): { command?: string; options: Options; help: 
         break;
       case "--stdin":
         options.stdin = true;
+        break;
+      case "--json":
+        options.json = true;
+        break;
+      case "--watch":
+        options.watch = true;
+        break;
+      case "--stale-after":
+        options.staleAfterMs =
+          parseDuration(argv[++i] ?? "") ?? options.staleAfterMs;
+        break;
+      case "--repo":
+        options.repo = argv[++i];
         break;
       case "--color":
         options.color = true;
@@ -160,6 +195,37 @@ async function runLogs(options: Options) {
   });
 }
 
+async function runStatus(options: Options) {
+  const renderOnce = async () => {
+    const status = await readRunStatus({
+      dir: options.dir,
+      repo: options.repo,
+      staleAfterMs: options.staleAfterMs,
+    });
+    if (options.json) {
+      console.log(toJsonStatus(status));
+    } else {
+      console.log(renderStatusTable(status, { color: options.color }));
+    }
+  };
+
+  if (!options.watch) {
+    await renderOnce();
+    return;
+  }
+
+  const controller = new AbortController();
+  const stop = () => controller.abort();
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+
+  while (!controller.signal.aborted) {
+    if (!options.json && options.color) process.stdout.write("\x1b[2J\x1b[H");
+    await renderOnce();
+    await Bun.sleep(options.pollInterval * 1000);
+  }
+}
+
 async function main() {
   const { command, options, help } = parseArgs(Bun.argv.slice(2));
 
@@ -172,6 +238,9 @@ async function main() {
     case undefined:
     case "logs":
       await runLogs(options);
+      break;
+    case "status":
+      await runStatus(options);
       break;
     default:
       console.error(`Unknown command: ${command}\n`);
